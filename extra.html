@@ -1,0 +1,182 @@
+           if (!_this.isOn) {
+                _this._events(id);
+              }
+            } else if (_this.isOn) {
+              _this._pauseListeners(scrollListener);
+            }
+          });
+        });
+      }
+
+      /**
+       * Removes event handlers for scroll and change events on anchor.
+       * @fires Sticky#pause
+       * @param {String} scrollListener - unique, namespaced scroll listener attached to `window`
+       */
+
+    }, {
+      key: '_pauseListeners',
+      value: function _pauseListeners(scrollListener) {
+        this.isOn = false;
+        $(window).off(scrollListener);
+
+        /**
+         * Fires when the plugin is paused due to resize event shrinking the view.
+         * @event Sticky#pause
+         * @private
+         */
+        this.$element.trigger('pause.zf.sticky');
+      }
+
+      /**
+       * Called on every `scroll` event and on `_init`
+       * fires functions based on booleans and cached values
+       * @param {Boolean} checkSizes - true if plugin should recalculate sizes and breakpoints.
+       * @param {Number} scroll - current scroll position passed from scroll event cb function. If not passed, defaults to `window.pageYOffset`.
+       */
+
+    }, {
+      key: '_calc',
+      value: function _calc(checkSizes, scroll) {
+        if (checkSizes) {
+          this._setSizes();
+        }
+
+        if (!this.canStick) {
+          if (this.isStuck) {
+            this._removeSticky(true);
+          }
+          return false;
+        }
+
+        if (!scroll) {
+          scroll = window.pageYOffset;
+        }
+
+        if (scroll >= this.topPoint) {
+          if (scroll <= this.bottomPoint) {
+            if (!this.isStuck) {
+              this._setSticky();
+            }
+          } else {
+            if (this.isStuck) {
+              this._removeSticky(false);
+            }
+          }
+        } else {
+          if (this.isStuck) {
+            this._removeSticky(true);
+          }
+        }
+      }
+
+      /**
+       * Causes the $element to become stuck.
+       * Adds `position: fixed;`, and helper classes.
+       * @fires Sticky#stuckto
+       * @function
+       * @private
+       */
+
+    }, {
+      key: '_setSticky',
+      value: function _setSticky() {
+        var _this = this,
+            stickTo = this.options.stickTo,
+            mrgn = stickTo === 'top' ? 'marginTop' : 'marginBottom',
+            notStuckTo = stickTo === 'top' ? 'bottom' : 'top',
+            css = {};
+
+        css[mrgn] = this.options[mrgn] + 'em';
+        css[stickTo] = 0;
+        css[notStuckTo] = 'auto';
+        this.isStuck = true;
+        this.$element.removeClass('is-anchored is-at-' + notStuckTo).addClass('is-stuck is-at-' + stickTo).css(css)
+        /**
+         * Fires when the $element has become `position: fixed;`
+         * Namespaced to `top` or `bottom`, e.g. `sticky.zf.stuckto:top`
+         * @event Sticky#stuckto
+         */
+        .trigger('sticky.zf.stuckto:' + stickTo);
+        this.$element.on("transitionend webkitTransitionEnd oTransitionEnd otransitionend MSTransitionEnd", function () {
+          _this._setSizes();
+        });
+      }
+
+      /**
+       * Causes the $element to become unstuck.
+       * Removes `position: fixed;`, and helper classes.
+       * Adds other helper classes.
+       * @param {Boolean} isTop - tells the function if the $element should anchor to the top or bottom of its $anchor element.
+       * @fires Sticky#unstuckfrom
+       * @private
+       */
+
+    }, {
+      key: '_removeSticky',
+      value: function _removeSticky(isTop) {
+        var stickTo = this.options.stickTo,
+            stickToTop = stickTo === 'top',
+            css = {},
+            anchorPt = (this.points ? this.points[1] - this.points[0] : this.anchorHeight) - this.elemHeight,
+            mrgn = stickToTop ? 'marginTop' : 'marginBottom',
+            notStuckTo = stickToTop ? 'bottom' : 'top',
+            topOrBottom = isTop ? 'top' : 'bottom';
+
+        css[mrgn] = 0;
+
+        css['bottom'] = 'auto';
+        if (isTop) {
+          css['top'] = 0;
+        } else {
+          css['top'] = anchorPt;
+        }
+
+        this.isStuck = false;
+        this.$element.removeClass('is-stuck is-at-' + stickTo).addClass('is-anchored is-at-' + topOrBottom).css(css)
+        /**
+         * Fires when the $element has become anchored.
+         * Namespaced to `top` or `bottom`, e.g. `sticky.zf.unstuckfrom:bottom`
+         * @event Sticky#unstuckfrom
+         */
+        .trigger('sticky.zf.unstuckfrom:' + topOrBottom);
+      }
+
+      /**
+       * Sets the $element and $container sizes for plugin.
+       * Calls `_setBreakPoints`.
+       * @param {Function} cb - optional callback function to fire on completion of `_setBreakPoints`.
+       * @private
+       */
+
+    }, {
+      key: '_setSizes',
+      value: function _setSizes(cb) {
+        this.canStick = Foundation.MediaQuery.is(this.options.stickyOn);
+        if (!this.canStick) {
+          if (cb && typeof cb === 'function') {
+            cb();
+          }
+        }
+        var _this = this,
+            newElemWidth = this.$container[0].getBoundingClientRect().width,
+            comp = window.getComputedStyle(this.$container[0]),
+            pdngl = parseInt(comp['padding-left'], 10),
+            pdngr = parseInt(comp['padding-right'], 10);
+
+        if (this.$anchor && this.$anchor.length) {
+          this.anchorHeight = this.$anchor[0].getBoundingClientRect().height;
+        } else {
+          this._parsePoints();
+        }
+
+        this.$element.css({
+          'max-width': newElemWidth - pdngl - pdngr + 'px'
+        });
+
+        var newContainerHeight = this.$element[0].getBoundingClientRect().height || this.containerHeight;
+        if (this.$element.css("display") == "none") {
+          newContainerHeight = 0;
+        }
+        this.containerHeight = newContainerHeight;
+        this.

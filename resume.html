@@ -1,0 +1,144 @@
+htMqHandler = null;
+
+        if (this.options.matchHeight) {
+          this._setHeightMqHandler = this._setHeight.bind(this);
+
+          $(window).on('changed.zf.mediaquery', this._setHeightMqHandler);
+        }
+
+        if (this.options.deepLink) {
+          $(window).on('popstate', this._checkDeepLink);
+        }
+      }
+
+      /**
+       * Adds click handlers for items within the tabs.
+       * @private
+       */
+
+    }, {
+      key: '_addClickHandler',
+      value: function _addClickHandler() {
+        var _this = this;
+
+        this.$element.off('click.zf.tabs').on('click.zf.tabs', '.' + this.options.linkClass, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          _this._handleTabChange($(this));
+        });
+      }
+
+      /**
+       * Adds keyboard event handlers for items within the tabs.
+       * @private
+       */
+
+    }, {
+      key: '_addKeyHandler',
+      value: function _addKeyHandler() {
+        var _this = this;
+
+        this.$tabTitles.off('keydown.zf.tabs').on('keydown.zf.tabs', function (e) {
+          if (e.which === 9) return;
+
+          var $element = $(this),
+              $elements = $element.parent('ul').children('li'),
+              $prevElement,
+              $nextElement;
+
+          $elements.each(function (i) {
+            if ($(this).is($element)) {
+              if (_this.options.wrapOnKeys) {
+                $prevElement = i === 0 ? $elements.last() : $elements.eq(i - 1);
+                $nextElement = i === $elements.length - 1 ? $elements.first() : $elements.eq(i + 1);
+              } else {
+                $prevElement = $elements.eq(Math.max(0, i - 1));
+                $nextElement = $elements.eq(Math.min(i + 1, $elements.length - 1));
+              }
+              return;
+            }
+          });
+
+          // handle keyboard event with keyboard util
+          Foundation.Keyboard.handleKey(e, 'Tabs', {
+            open: function () {
+              $element.find('[role="tab"]').focus();
+              _this._handleTabChange($element);
+            },
+            previous: function () {
+              $prevElement.find('[role="tab"]').focus();
+              _this._handleTabChange($prevElement);
+            },
+            next: function () {
+              $nextElement.find('[role="tab"]').focus();
+              _this._handleTabChange($nextElement);
+            },
+            handled: function () {
+              e.stopPropagation();
+              e.preventDefault();
+            }
+          });
+        });
+      }
+
+      /**
+       * Opens the tab `$targetContent` defined by `$target`. Collapses active tab.
+       * @param {jQuery} $target - Tab to open.
+       * @param {boolean} historyHandled - browser has already handled a history update
+       * @fires Tabs#change
+       * @function
+       */
+
+    }, {
+      key: '_handleTabChange',
+      value: function _handleTabChange($target, historyHandled) {
+
+        /**
+         * Check for active class on target. Collapse if exists.
+         */
+        if ($target.hasClass('' + this.options.linkActiveClass)) {
+          if (this.options.activeCollapse) {
+            this._collapseTab($target);
+
+            /**
+             * Fires when the zplugin has successfully collapsed tabs.
+             * @event Tabs#collapse
+             */
+            this.$element.trigger('collapse.zf.tabs', [$target]);
+          }
+          return;
+        }
+
+        var $oldTab = this.$element.find('.' + this.options.linkClass + '.' + this.options.linkActiveClass),
+            $tabLink = $target.find('[role="tab"]'),
+            hash = $tabLink[0].hash,
+            $targetContent = this.$tabContent.find(hash);
+
+        //close old tab
+        this._collapseTab($oldTab);
+
+        //open new tab
+        this._openTab($target);
+
+        //either replace or update browser history
+        if (this.options.deepLink && !historyHandled) {
+          var anchor = $target.find('a').attr('href');
+
+          if (this.options.updateHistory) {
+            history.pushState({}, '', anchor);
+          } else {
+            history.replaceState({}, '', anchor);
+          }
+        }
+
+        /**
+         * Fires when the plugin has successfully changed tabs.
+         * @event Tabs#change
+         */
+        this.$element.trigger('change.zf.tabs', [$target, $targetContent]);
+
+        //fire to children a mutation event
+        $targetContent.find("[data-mutate]").trigger("mutateme.zf.trigger");
+      }
+
+      /*
